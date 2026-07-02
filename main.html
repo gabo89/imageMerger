@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+<body>
+
+R image: <input type="file" id="r"><br>
+G image: <input type="file" id="g"><br>
+B image: <input type="file" id="b"><br>
+
+<button onclick="pack()">MERGE RGB</button>
+
+<canvas id="c"></canvas>
+
+<script>
+function load(file) {
+  return new Promise(res => {
+    const img = new Image();
+    img.onload = () => res(img);
+    img.src = URL.createObjectURL(file);
+  });
+}
+
+// SAFE grayscale extraction (ONE VALUE PER PIXEL)
+function getGray(img, w, h) {
+  const c = document.createElement("canvas");
+  c.width = w;
+  c.height = h;
+
+  const ctx = c.getContext("2d", { willReadFrequently: true });
+  ctx.imageSmoothingEnabled = false;
+
+  ctx.drawImage(img, 0, 0, w, h);
+
+  const d = ctx.getImageData(0, 0, w, h).data;
+  const out = new Uint8Array(w * h);
+
+  for (let i = 0, p = 0; i < d.length; i += 4, p++) {
+    out[p] = d[i]; 
+  }
+
+  return out;
+}
+
+async function pack() {
+  const [ri, gi, bi] = await Promise.all([
+    load(r.files[0]),
+    load(g.files[0]),
+    load(b.files[0])
+  ]);
+
+  const w = ri.width;
+  const h = ri.height;
+
+  const R = getGray(ri, w, h);
+  const G = getGray(gi, w, h);
+  const B = getGray(bi, w, h);
+
+  const canvas = document.getElementById("c");
+  canvas.width = w;
+  canvas.height = h;
+
+  const ctx = canvas.getContext("2d");
+  const out = ctx.createImageData(w, h);
+
+  for (let i = 0, p = 0; i < R.length; i++, p += 4) {
+    out.data[p]     = R[i];
+    out.data[p + 1] = G[i];
+    out.data[p + 2] = B[i];
+    out.data[p + 3] = 255;
+  }
+
+  ctx.putImageData(out, 0, 0);
+}
+</script>
+
+</body>
+</html>
